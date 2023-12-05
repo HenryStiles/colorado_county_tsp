@@ -47,5 +47,27 @@ for location in location_data:
     longitude = float(longitude)
     county_coordinates[county_name] = (latitude, longitude)
 
-print(county_coordinates)
+
+def test_haversine():
+    # get coordinates for boulder
+    blat, blong = county_coordinates['Boulder, CO']
+    print(blat,blong)
+    for county in county_coordinates:
+        # get the destination city coords.
+        dlat, dlong = county_coordinates[county]
+        # calculate the distance
+        dist = haversine(blat, blong, dlat, dlong)
+        print("distance from Boulder to " + county + " = ", dist)
+
+test_haversine()
+
+
+#        for i in range(len(counties)):
+#        for j in range(i + 1, len(counties)):
+#            county1 = counties[i]
+#            county2 = counties[j]
+#            lat1, lon1 = county_coordinates[county1]
+#            lat2, lon2 = county_coordinates[county2]
+#            distance = haversine(lat1, lon1, lat2, lon2)
+
 
