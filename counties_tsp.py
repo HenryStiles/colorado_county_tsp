@@ -59,15 +59,49 @@ def test_haversine():
         dist = haversine(blat, blong, dlat, dlong)
         print("distance from Boulder to " + county + " = ", dist)
 
-test_haversine()
+
+# DS to hold the counties and distances between them.
+class CountyDistanceMatrix:
+    def __init__(self, counties):
+        self.counties = counties
+        self.index = {county: index for index, county in enumerate(counties)}
+        self.matrix = [[float('inf') for _ in counties] for _ in counties]
+
+    def add_distance(self, county1, county2, distance):
+        i, j = self.index[county1], self.index[county2]
+        self.matrix[i][j] = distance
+        self.matrix[j][i] = distance  # Assuming distance is symmetric
+
+    def get_distance(self, county1, county2):
+        try:
+            i, j = self.index[county1], self.index[county2]
+        except KeyError:
+            print(f"KeyError: One of the counties {county1} or {county2} does not exist in the index.")
+            return None
+        return self.matrix[i][j] 
+
+    def __str__(self):
+        matrix_str = "\t" + "\t".join(self.counties) + "\n"
+        for i, row in enumerate(self.matrix):
+            matrix_str += self.counties[i] + "\t" + "\t".join(map(str, row)) + "\n"
+        return matrix_str
+        
+counties = list(county_coordinates.keys())
+# move Boulder to the front of the list (start city)
+counties.remove('Boulder, CO')
+counties = ['Boulder, CO'] + counties
+matrix = CountyDistanceMatrix(counties)
+
+# Add distances between all counties
+for i in range(len(counties)):
+    for j in range(i + 1, len(counties)):
+        county1 = counties[i]
+        county2 = counties[j]
+        lat1, lon1 = county_coordinates[county1]
+        lat2, lon2 = county_coordinates[county2]
+        distance = haversine(lat1, lon1, lat2, lon2)
+        matrix.add_distance(county1, county2, distance)
 
 
-#        for i in range(len(counties)):
-#        for j in range(i + 1, len(counties)):
-#            county1 = counties[i]
-#            county2 = counties[j]
-#            lat1, lon1 = county_coordinates[county1]
-#            lat2, lon2 = county_coordinates[county2]
-#            distance = haversine(lat1, lon1, lat2, lon2)
 
-
+print(matrix)
