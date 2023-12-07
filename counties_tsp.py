@@ -1,5 +1,6 @@
 import math
 import pandas as pd
+import time
 
 # data file from the State of Colorado, county seats and coordinates.
 input_file = 'Colorado_County_Seats_20240114.csv'
@@ -60,7 +61,6 @@ def test_haversine():
         print("distance from Boulder to " + county + " = ", dist)
 
 
-# DS to hold the counties and distances between them.
 class CountyDistanceMatrix:
     def __init__(self, counties):
         self.counties = counties
@@ -90,6 +90,7 @@ counties = list(county_coordinates.keys())
 # move Boulder to the front of the list (start city)
 counties.remove('Boulder, CO')
 counties = ['Boulder, CO'] + counties
+start = counties[0]
 matrix = CountyDistanceMatrix(counties)
 
 # Add distances between all counties
@@ -103,5 +104,38 @@ for i in range(len(counties)):
         matrix.add_distance(county1, county2, distance)
 
 
+TIMEOUT = 10  # seconds
 
-print(matrix)
+# Brute force solution (invocation commented out).  Prints out the number of
+# paths considered to show how hopeless this approach is.
+import itertools
+def TSP_brute(matrix, start):
+    counties = matrix.counties.copy()
+    counties.remove(start)
+    min_cost = float("inf")
+    min_path = None
+    path_count = 0
+    start_time = time.time()
+    for path in itertools.permutations(counties):
+        path_count += 1
+        if path_count % 1000000 == 0:
+            print("Paths considered:", path_count, "\r", end="")
+        if time.time() - start_time > TIMEOUT:
+            print("min cost:", min_cost)
+            print("min path:", min_path)
+            break
+        cost = 0
+        prev = start
+        for county in path:
+            cost += matrix.get_distance(prev, county)
+            prev = county
+        cost += matrix.get_distance(prev, start)
+        if cost < min_cost:
+            min_cost = cost
+            min_path = path
+    # add the start county to the min path list at the beginning and end.
+    min_path = [start] + list(min_path) + [start]
+    return min_path, min_cost
+
+brute_tour, brute_cost = TSP_brute(matrix, start)
+print("Bruce Force: ", brute_tour, brute_cost)
