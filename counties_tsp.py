@@ -139,3 +139,38 @@ def TSP_brute(matrix, start):
 
 brute_tour, brute_cost = TSP_brute(matrix, start)
 print("Bruce Force: ", brute_tour, brute_cost)
+
+
+def TSP_NearestNeighbor(matrix, start):
+    # make a copy of the counties list since we will modify it
+    counties = matrix.counties.copy()
+    # create a min path list initialized with the start county
+    min_path = [start]
+    # remove the start county from the counties list
+    counties.remove(start)
+    # loop until there are no more counties left
+    total_cost = 0
+    while counties:
+        # get the last county in the min path list
+        prev = min_path[-1]
+        # find the nearest county to the last county
+        min_county = None
+        min_cost = float("inf")
+        for county in counties:
+            cost = matrix.get_distance(prev, county)
+            if cost < min_cost:
+                min_cost = cost
+                min_county = county
+        # add the nearest county to the min path list
+        min_path.append(min_county)
+        # remove the nearest county from the counties list
+        counties.remove(min_county)
+        total_cost += min_cost
+    # add the cost to travel back to the start county
+    total_cost += matrix.get_distance(min_path[-1], start)
+    # add the start county to the min path list at the beginning and end.
+    min_path = min_path + [start]
+    return min_path, total_cost
+
+nearest_tour, nearest_cost = TSP_NearestNeighbor(matrix, start)
+print("Nearest Neighbor: ", nearest_tour, nearest_cost)
