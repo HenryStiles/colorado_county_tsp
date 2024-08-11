@@ -174,3 +174,117 @@ def TSP_NearestNeighbor(matrix, start):
 
 nearest_tour, nearest_cost = TSP_NearestNeighbor(matrix, start)
 print("Nearest Neighbor: ", nearest_tour, nearest_cost)
+
+
+# branch and bound with minimum spanning tree. Nothing original here, much code used from https://www.geeksforgeeks.org/
+
+
+# reduce cost matrix.
+def reduce_matrix(matrix):
+    n = len(matrix)
+    lower_bound = 0
+
+    # Row reduction
+    for i in range(n):
+        row_min = min(matrix[i])
+        if row_min != float('inf') and row_min > 0:
+            lower_bound += row_min
+            for j in range(n):
+                matrix[i][j] -= row_min
+
+    # Column reduction
+    for j in range(n):
+        col_min = min(matrix[i][j] for i in range(n))
+        if col_min != float('inf') and col_min > 0:
+            lower_bound += col_min
+            for i in range(n):
+                matrix[i][j] -= col_min
+
+    return lower_bound
+
+
+# Branch and Bound, with reduced cost matrix
+import time
+
+def calculate_mst_cost(matrix, visited_indices):
+    num_counties = len(matrix)
+    unvisited = [i for i in range(num_counties) if i not in visited_indices]
+    if not unvisited:
+        return 0
+
+    mst_cost = 0
+    selected = [False] * num_counties
+    key_values = [float('inf')] * num_counties
+    key_values[unvisited[0]] = 0
+
+    for _ in range(len(unvisited)):
+        u = min((i for i in range(num_counties) if not selected[i] and i in unvisited), key=lambda i: key_values[i])
+        selected[u] = True
+        mst_cost += key_values[u]
+
+        for v in range(num_counties):
+            if matrix[u][v] != float('inf') and not selected[v] and matrix[u][v] < key_values[v]:
+                key_values[v] = matrix[u][v]
+
+    return mst_cost
+
+def branch_and_bound(county_matrix):
+    num_counties = len(county_matrix.counties)
+    county_indices = list(range(num_counties))
+    nn_tour, nn_cost = TSP_NearestNeighbor(county_matrix, county_matrix.counties[0])
+    best_solution = {'tour': nn_tour, 'cost': nn_cost}
+    start_time = time.time()
+    # Statistics
+    stats = {
+        'total_nodes_visited': 0,
+        'nodes_pruned': 0,
+        'pruning_depths': {}
+    }
+    timeout_displayed = False
+    def solve(matrix, current_index, visited_indices, current_cost, current_tour):
+        nonlocal timeout_displayed
+        if time.time() - start_time > TIMEOUT:
+            if not timeout_displayed:
+                timeout_displayed = True
+                print("Timeout reached. Stopping algorithm.")
+            return
+
+        stats['total_nodes_visited'] += 1
+
+        if len(visited_indices) == num_counties:
+        # Complete the tour and update the best solution
+            total_cost = current_cost + matrix[current_index][0]
+            if total_cost < best_solution['cost']:
+                best_solution['cost'] = total_cost
+                best_solution['tour'] = [county_matrix.counties[index] for index in current_tour] + [county_matrix.counties[0]]
+            return
+
+        for next_index in county_indices:
+            if next_index not in visited_indices:
+                new_matrix = [row[:] for row in matrix]  # Copy matrix
+                # Set the rows and columns for the current and next county to infinity
+                for i in range(num_counties):
+                    new_matrix[current_index][i] = float('inf')
+                    new_matrix[i][next_index] = float('inf')
+                # Prevent subtour
+                new_matrix[next_index][0] = float('inf')
+                # Calculate the reduction cost for the new matrix
+                reduction_cost = reduce_matrix(new_matrix)
+                mst_cost = calculate_mst_cost(new_matrix, visited_indices + [next_index])
+
+                new_cost = current_cost + matrix[current_index][next_index] + reduction_cost + mst_cost
+                if new_cost < best_solution['cost']:
+                    solve(new_matrix, next_index, visited_indices + [next_index], new_cost, current_tour + [next_index])
+                else:
+                    stats['nodes_pruned'] += 1
+                    stats['pruning_depths'][len(visited_indices)] = stats['pruning_depths'].get(len(visited_indices), 0) + 1
+    # Initial matrix reduction
+    initial_matrix = [[county_matrix.get_distance(county_matrix.counties[i], county_matrix.counties[j]) for j in county_indices] for i in county_indices]
+    initial_reduction_cost = reduce_matrix(initial_matrix)
+    solve(initial_matrix, 0, [0], initial_reduction_cost, [0])
+    print("Total nodes visited:", stats['total_nodes_visited'], "Nodes pruned:", stats['nodes_pruned'], "Pruning depths:", stats['pruning_depths'])
+    return best_solution['tour'], best_solution['cost']
+
+
+branch_tour, branch_cost = branch_and_bound(matrix)
+print("Branch and Bound: ", branch_tour, branch_cost)
